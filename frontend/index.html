@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StrudelGPT</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-primary);
+      background-image:
+        linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--bg-checker-alt) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--bg-checker-alt) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--bg-checker-alt) 75%);
+      background-size: var(--checker-size) var(--checker-size);
+      background-position:
+        0 0,
+        0 calc(var(--checker-size) / 2),
+        calc(var(--checker-size) / 2) calc(var(--checker-size) / -2),
+        calc(var(--checker-size) / -2) 0;
+    }
+
+    main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Strudel panel — fills available space */
+    .strudel-panel {
+      position: absolute;
+      inset: 0;
+    }
+
+    strudel-repl {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    strudel-repl iframe {
+      width: 100% !important;
+      height: 100% !important;
+      border: none;
+    }
+
+    /* Chat panel — floating overlay on the right */
+    .chat-panel {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      bottom: 1rem;
+      width: 360px;
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transform: translateX(0);
+      opacity: 1;
+      transition:
+        transform var(--transition-speed) ease,
+        opacity var(--transition-speed) ease;
+    }
+
+    .chat-panel.hidden {
+      transform: translateX(calc(100% + 1rem));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .chat-panel.no-transition {
+      transition: none;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .chat-message {
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.5rem;
+      max-width: 90%;
+      line-height: 1.4;
+      font-size: 0.9rem;
+    }
+
+    .chat-message.user {
+      background: var(--bubble-user);
+      color: var(--bubble-user-text);
+      align-self: flex-end;
+    }
+
+    .chat-message.assistant {
+      background: var(--bubble-assistant);
+      color: var(--bubble-assistant-text);
+      align-self: flex-start;
+    }
+
+    .chat-input-area {
+      display: flex;
+      padding: 0.75rem;
+      gap: 0.5rem;
+      border-top: 1px solid var(--surface-border);
+      border-radius: 0 0 var(--radius) var(--radius);
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      padding: 0.5rem 0.75rem;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 0.375rem;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      outline: none;
+    }
+
+    .chat-input-area input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .chat-input-area input:focus {
+      border-color: var(--input-focus-border);
+    }
+
+    .chat-input-area button {
+      padding: 0.5rem 1rem;
+      background: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background var(--transition-speed) ease;
+    }
+
+    .chat-input-area button:hover {
+      background: var(--accent-hover);
+    }
+
+    .chat-toggle {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--text-primary);
+      border: none;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow);
+      transition:
+        background var(--transition-speed) ease,
+        transform var(--transition-speed) ease,
+        opacity var(--transition-speed) ease;
+    }
+
+    .chat-toggle:hover {
+      background: var(--accent-hover);
+      transform: scale(1.1);
+    }
+
+    .chat-toggle.visible {
+      display: flex;
+    }
+
+    .chat-close {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      padding: 0.5rem 0.75rem;
+      line-height: 1;
+      transition: color var(--transition-speed) ease;
+    }
+
+    .chat-close:hover {
+      color: var(--text-primary);
+    }
+
+    .chat-header {
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.25rem 0.25rem 0 0.25rem;
+    }
+
+    /* Ensure chat elements stay above the iframe */
+    .chat-panel,
+    .chat-toggle {
+      z-index: 20;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="strudel-panel">
+      <script src="https://unpkg.com/@strudel/embed@latest"></script>
+      <strudel-repl id="strudelEditor">
+<!--
+note("c a f e").sound("piano")
+-->
+      </strudel-repl>
+    </div>
+    <button class="chat-toggle visible" id="chatToggle">&#x1f4ac;</button>
+    <div class="chat-panel hidden no-transition" id="chatPanel">
+      <div class="chat-header">
+        <button class="chat-close" id="chatClose">&times;</button>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-message assistant">What kind of music would you like to create?</div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="Describe a pattern..." autofocus />
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // --- Console log interception ---
+    const consoleBuffer = [];
+    const origLog = console.log;
+    const origError = console.error;
+    const origWarn = console.warn;
+    console.log = (...args) => { consoleBuffer.push({ level: 'log', text: args.join(' ') }); origLog.apply(console, args); };
+    console.error = (...args) => { consoleBuffer.push({ level: 'error', text: args.join(' ') }); origError.apply(console, args); };
+    console.warn = (...args) => { consoleBuffer.push({ level: 'warn', text: args.join(' ') }); origWarn.apply(console, args); };
+
+    // --- Chat UI ---
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMessage(text, role) {
+      const msg = document.createElement('div');
+      msg.className = `chat-message ${role}`;
+      msg.textContent = text;
+      chatMessages.appendChild(msg);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // --- WebSocket ---
+    let ws;
+    function connectWS() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+      ws.onopen = () => origLog('[ws] connected');
+
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+
+        if (msg.type === 'command') {
+          handleCommand(msg);
+        } else if (msg.type === 'event') {
+          handleEvent(msg);
+        }
+      };
+
+      ws.onclose = () => {
+        origLog('[ws] disconnected, reconnecting in 2s...');
+        setTimeout(connectWS, 2000);
+      };
+    }
+
+    // --- Command handlers (backend → frontend) ---
+    function handleCommand(msg) {
+      const editor = document.getElementById('strudelEditor');
+      let responseData = {};
+
+      try {
+        switch (msg.action) {
+          case 'read_code':
+            responseData = { code: editor?.code ?? '' };
+            break;
+
+          case 'update_code':
+            if (editor && msg.params?.code != null) {
+              editor.code = msg.params.code;
+              editor.evaluate();
+              responseData = { ok: true };
+            } else {
+              responseData = { ok: false, error: 'No editor or missing code param' };
+            }
+            break;
+
+          case 'read_console':
+            responseData = { logs: consoleBuffer.splice(0) };
+            break;
+
+          default:
+            responseData = { error: `Unknown action: ${msg.action}` };
+        }
+      } catch (err) {
+        responseData = { ok: false, error: String(err) };
+      }
+
+      ws.send(JSON.stringify({ id: msg.id, type: 'response', data: responseData }));
+    }
+
+    // --- Event handlers (backend → frontend) ---
+    function handleEvent(msg) {
+      if (msg.event === 'chat_response') {
+        addMessage(msg.data.text, 'assistant');
+      }
+    }
+
+    // --- Send chat message via WebSocket ---
+    function handleSend() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      addMessage(text, 'user');
+      chatInput.value = '';
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'event', event: 'chat_message', data: { text } }));
+      }
+    }
+
+    sendBtn.addEventListener('click', handleSend);
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSend();
+    });
+
+    // --- Chat panel toggle ---
+    const chatPanel = document.getElementById('chatPanel');
+    const chatToggle = document.getElementById('chatToggle');
+    const chatClose = document.getElementById('chatClose');
+
+    chatClose.addEventListener('click', () => {
+      chatPanel.classList.add('hidden');
+      setTimeout(() => chatToggle.classList.add('visible'), 200);
+    });
+
+    chatToggle.addEventListener('click', () => {
+      chatPanel.classList.remove('no-transition');
+      chatToggle.classList.remove('visible');
+      chatPanel.classList.remove('hidden');
+    });
+
+    connectWS();
+  </script>
+</body>
+
+</html>

@@ -390,24 +390,67 @@ note("c a f e").sound("piano")
       };
     }
 
+    // --- Strudel iframe helpers ---
+    // The <strudel-repl> embed creates an iframe with code base64-encoded in the URL hash.
+    // There is no JS API on the element, so we interact via the iframe src.
+
+    // Track the current code separately so we always have it available.
+    // The embed creates the iframe in a setTimeout, so we read the initial
+    // code from the HTML comment inside the <strudel-repl> tag as fallback.
+    let currentCode = (() => {
+      const el = document.getElementById('strudelEditor');
+      // Try reading from iframe first (may not exist yet)
+      const iframe = el?.querySelector('iframe');
+      if (iframe) {
+        try {
+          const hash = new URL(iframe.src).hash.slice(1);
+          return atob(decodeURIComponent(hash));
+        } catch (e) { /* fall through */ }
+      }
+      // Fallback: parse the HTML comment the embed uses for initial code
+      const raw = el?.innerHTML ?? '';
+      const match = raw.match(/<!--\s*([\s\S]*?)\s*-->/);
+      return match ? match[1].trim() : '';
+    })();
+
+    function getStrudelCode() {
+      return currentCode;
+    }
+
+    function setStrudelCode(code) {
+      currentCode = code;
+      const el = document.getElementById('strudelEditor');
+      if (!el) return false;
+      // Remove existing iframe and create a new one with updated code
+      const oldIframe = el.querySelector('iframe');
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://strudel.cc/#${encodeURIComponent(btoa(code))}`;
+      iframe.setAttribute('width', '600');
+      iframe.setAttribute('height', '400');
+      if (oldIframe) {
+        oldIframe.replaceWith(iframe);
+      } else {
+        el.appendChild(iframe);
+      }
+      return true;
+    }
+
     // --- Command handlers (backend → frontend) ---
     function handleCommand(msg) {
-      const editor = document.getElementById('strudelEditor');
       let responseData = {};
 
       try {
         switch (msg.action) {
           case 'read_code':
-            responseData = { code: editor?.code ?? '' };
+            responseData = { code: getStrudelCode() };
             break;
 
           case 'update_code':
-            if (editor && msg.params?.code != null) {
-              editor.code = msg.params.code;
-              editor.evaluate();
-              responseData = { ok: true };
+            if (msg.params?.code != null) {
+              const ok = setStrudelCode(msg.params.code);
+              responseData = { ok };
             } else {
-              responseData = { ok: false, error: 'No editor or missing code param' };
+              responseData = { ok: false, error: 'Missing code param' };
             }
             break;
 

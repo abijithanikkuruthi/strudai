@@ -1,6 +1,5 @@
 import os
 from functools import lru_cache
-from pathlib import Path
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage
@@ -26,12 +25,11 @@ def _build_agent():
     tools = registry.to_langchain_tools()
 
     llm = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-haiku-4-5-20251001",
         api_key=os.environ["CLAUDE_API_KEY"],
     ).bind_tools(tools)
 
-    workshop = Path(__file__).resolve().parent / "knowledge" / "workshop.md"
-    system_prompt = render("system.j2", workshop_content=workshop.read_text())
+    system_prompt = render("system.j2")
 
     async def chat(state: MessagesState) -> MessagesState:
         messages = [SystemMessage(content=system_prompt), *state["messages"]]

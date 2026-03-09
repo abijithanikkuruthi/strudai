@@ -1,4 +1,4 @@
-from backend.knowledge.fetch_workshop import clean_mdx
+from backend.knowledge.fetch import SOURCES, Source, clean_mdx
 
 
 class TestCleanMdx:
@@ -84,3 +84,17 @@ class TestCleanMdx:
         text = '<MiniRepl client:idle tunes={examples} />\n'
         result = clean_mdx(text)
         assert "MiniRepl" not in result
+
+
+class TestSources:
+    def test_has_expected_keys(self):
+        assert set(SOURCES) == {"workshop", "understand", "recipes", "learn"}
+
+    def test_sources_are_source_instances(self):
+        for source in SOURCES.values():
+            assert isinstance(source, Source)
+
+    def test_each_source_has_pages(self):
+        for name, source in SOURCES.items():
+            assert len(source.pages) > 0, f"{name} has no pages"
+            assert source.path == name

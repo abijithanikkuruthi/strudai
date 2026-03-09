@@ -160,12 +160,27 @@
       animation: pulse 1.4s ease-in-out infinite;
     }
 
-    .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
-    .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+    .dot-pulse span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dot-pulse span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
 
     @keyframes pulse {
-      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-      40% { opacity: 1; transform: scale(1); }
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
 
     .chat-input-area {
@@ -276,7 +291,7 @@
     <div class="strudel-panel">
       <script src="https://unpkg.com/@strudel/embed@latest"></script>
       <strudel-repl id="strudelEditor">
-<!--
+        <!--
 note("c a f e").sound("piano")
 -->
       </strudel-repl>
@@ -287,7 +302,8 @@ note("c a f e").sound("piano")
         <button class="chat-close" id="chatClose">&times;</button>
       </div>
       <div class="chat-messages" id="chatMessages">
-        <div class="chat-message assistant">What kind of music would you like to create?</div>
+        <div class="chat-message assistant">Hi I'm Hans Strudel. I hear you don't want to learn how to code?
+        </div>
       </div>
       <div class="chat-input-area">
         <input type="text" id="chatInput" placeholder="Describe a pattern..." autofocus />

@@ -1,33 +1,90 @@
-"""Fetch and clean Strudel workshop MDX files into a single Markdown reference.
+"""Fetch and clean Strudel MDX files into Markdown reference documents.
 
 Usage:
-    uv run python -m backend.knowledge.fetch_workshop
+    uv run python -m backend.knowledge.fetch              # fetch all sources
+    uv run python -m backend.knowledge.fetch workshop      # fetch one source
+    uv run python -m backend.knowledge.fetch workshop recipes  # fetch multiple
 """
 
 import re
+import sys
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 
-BASE_URL = (
+BASE_RAW_URL = (
     "https://codeberg.org/uzu/strudel/raw/branch/main"
-    "/website/src/pages/workshop"
+    "/website/src/pages"
 )
 
-# Ordered for maximum usefulness as context
-PAGES = [
-    "recap",
-    "first-sounds",
-    "first-notes",
-    "first-effects",
-    "pattern-effects",
-    "getting-started",
-]
+KNOWLEDGE_DIR = Path(__file__).resolve().parent
 
-OUTPUT = Path(__file__).resolve().parent / "workshop.md"
+
+@dataclass
+class Source:
+    path: str
+    pages: list[str]
+
+
+SOURCES: dict[str, Source] = {
+    "workshop": Source(
+        path="workshop",
+        pages=[
+            "recap",
+            "first-sounds",
+            "first-notes",
+            "first-effects",
+            "pattern-effects",
+            "getting-started",
+        ],
+    ),
+    "understand": Source(
+        path="understand",
+        pages=["cycles", "pitch", "voicings"],
+    ),
+    "recipes": Source(
+        path="recipes",
+        pages=["arpeggios", "microrhythms", "recipes", "rhythms"],
+    ),
+    "learn": Source(
+        path="learn",
+        pages=[
+            "mini-notation",
+            "sounds",
+            "notes",
+            "effects",
+            "signals",
+            "samples",
+            "synths",
+            "tonal",
+            "time-modifiers",
+            "random-modifiers",
+            "conditional-modifiers",
+            "stepwise",
+            "factories",
+            "code",
+            "visual-feedback",
+            "colors",
+            "input-output",
+            "input-devices",
+            "faq",
+            "csound",
+            "hydra",
+            "accumulation",
+            "getting-started",
+            "strudel-vs-tidal",
+            "mondo-notation",
+            "xen",
+            "pwa",
+            "metadata",
+            "devicemotion",
+        ],
+    ),
+}
 
 
 def clean_mdx(text: str) -> str:
-    """Strip MDX artifacts from workshop content, returning clean Markdown."""
+    """Strip MDX artifacts from content, returning clean Markdown."""
     # Remove YAML frontmatter
     text = re.sub(r"^---\n.*?\n---\n?", "", text, count=1, flags=re.DOTALL)
 
@@ -104,11 +161,15 @@ def clean_mdx(text: str) -> str:
     return text.strip() + "\n"
 
 
-def fetch_and_save() -> None:
-    """Fetch workshop MDX files from Codeberg, clean them, and write workshop.md."""
+def fetch_source(name: str) -> None:
+    """Fetch a single source's MDX files from Codeberg, clean them, and write {name}.md."""
+    source = SOURCES.get(name)
+    if source is None:
+        raise KeyError(f"Unknown source: {name}. Available: {', '.join(SOURCES)}")
+
     sections: list[str] = []
-    for page in PAGES:
-        url = f"{BASE_URL}/{page}.mdx"
+    for page in source.pages:
+        url = f"{BASE_RAW_URL}/{source.path}/{page}.mdx"
         print(f"Fetching {url} ...")
         with urllib.request.urlopen(url) as resp:
             raw = resp.read().decode()
@@ -116,9 +177,18 @@ def fetch_and_save() -> None:
         sections.append(cleaned)
 
     combined = "\n\n---\n\n".join(sections)
-    OUTPUT.write_text(combined)
-    print(f"Wrote {OUTPUT} ({len(combined)} chars)")
+    output = KNOWLEDGE_DIR / f"{name}.md"
+    output.write_text(combined)
+    print(f"Wrote {output} ({len(combined)} chars)")
+
+
+def fetch_all() -> None:
+    """Fetch all sources."""
+    for name in SOURCES:
+        fetch_source(name)
 
 
 if __name__ == "__main__":
-    fetch_and_save()
+    names = sys.argv[1:] if len(sys.argv) > 1 else list(SOURCES)
+    for name in names:
+        fetch_source(name)

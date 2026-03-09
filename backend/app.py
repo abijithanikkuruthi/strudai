@@ -28,12 +28,21 @@ async def get_tools() -> JSONResponse:
 
 
 async def _handle_chat(text: str, session_id: str) -> None:
+    async def on_event(event_type: str, data: dict) -> None:
+        try:
+            await manager.send_event(f"agent_{event_type}", data)
+        except RuntimeError:
+            logger.debug("Skipping agent event %s — no frontend connected", event_type)
+
     try:
-        response_text = await agent_respond(text, session_id)
+        response_text = await agent_respond(text, session_id, on_event=on_event)
     except Exception:
         logger.exception("agent_respond failed")
         response_text = "Sorry, something went wrong. Please try again."
-    await manager.send_event("chat_response", {"text": response_text})
+    try:
+        await manager.send_event("chat_response", {"text": response_text})
+    except RuntimeError:
+        logger.warning("Could not send chat response — no frontend connected")
 
 
 @app.websocket("/ws")

@@ -116,6 +116,58 @@
       align-self: flex-start;
     }
 
+    .chat-message.status {
+      background: transparent;
+      color: var(--text-muted);
+      align-self: flex-start;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .chat-message.tool-call {
+      background: rgba(124, 92, 191, 0.12);
+      border: 1px solid rgba(124, 92, 191, 0.25);
+      color: var(--text-secondary);
+      align-self: flex-start;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.75rem;
+      font-family: monospace;
+    }
+
+    .chat-message.tool-call .tool-name {
+      color: var(--accent-hover);
+      font-weight: 600;
+    }
+
+    .chat-message.tool-call .tool-status {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .dot-pulse {
+      display: inline-flex;
+      gap: 3px;
+    }
+
+    .dot-pulse span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+
     .chat-input-area {
       display: flex;
       padding: 0.75rem;
@@ -259,12 +311,59 @@ note("c a f e").sound("piano")
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
 
+    let statusEl = null;
+    const toolCallEls = new Map(); // tool name -> element
+
     function addMessage(text, role) {
+      removeStatus();
       const msg = document.createElement('div');
       msg.className = `chat-message ${role}`;
       msg.textContent = text;
       chatMessages.appendChild(msg);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showStatus(label) {
+      if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.className = 'chat-message status';
+        chatMessages.appendChild(statusEl);
+      }
+      statusEl.innerHTML = `${label} <span class="dot-pulse"><span></span><span></span><span></span></span>`;
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeStatus() {
+      if (statusEl) {
+        statusEl.remove();
+        statusEl = null;
+      }
+    }
+
+    function showToolCall(toolName, input) {
+      removeStatus();
+      const el = document.createElement('div');
+      el.className = 'chat-message tool-call';
+      const inputStr = typeof input === 'object' ? JSON.stringify(input) : String(input);
+      const truncated = inputStr.length > 80 ? inputStr.slice(0, 80) + '...' : inputStr;
+      el.innerHTML = `<span class="tool-name">${toolName}</span> <span class="tool-status">running...</span>`;
+      if (truncated && truncated !== '{}') {
+        el.innerHTML += `<br>${truncated}`;
+      }
+      chatMessages.appendChild(el);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      toolCallEls.set(toolName, el);
+    }
+
+    function resolveToolCall(toolName) {
+      const el = toolCallEls.get(toolName);
+      if (el) {
+        const statusSpan = el.querySelector('.tool-status');
+        if (statusSpan) statusSpan.textContent = 'done';
+        toolCallEls.delete(toolName);
+      }
+      // Show thinking again while waiting for next step
+      showStatus('Thinking');
     }
 
     // --- WebSocket ---
@@ -328,7 +427,15 @@ note("c a f e").sound("piano")
 
     // --- Event handlers (backend → frontend) ---
     function handleEvent(msg) {
-      if (msg.event === 'chat_response') {
+      if (msg.event === 'agent_thinking') {
+        showStatus('Thinking');
+      } else if (msg.event === 'agent_tool_call') {
+        showToolCall(msg.data.tool, msg.data.input);
+      } else if (msg.event === 'agent_tool_result') {
+        resolveToolCall(msg.data.tool);
+      } else if (msg.event === 'chat_response') {
+        removeStatus();
+        toolCallEls.clear();
         addMessage(msg.data.text, 'assistant');
       }
     }

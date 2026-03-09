@@ -1,40 +1,61 @@
 import json
-from unittest.mock import AsyncMock, patch
 
 import pytest
+from pydantic import BaseModel
+
+from backend.tools.registry import ToolRegistry
 
 
-class TestAgentToolWrappers:
-    """Test that the LangChain @tool wrappers correctly call the registry."""
+class EchoParams(BaseModel):
+    text: str
+
+
+class TestToLangchainTools:
+    """Test that to_langchain_tools() produces working LangChain tools."""
+
+    def _make_registry(self):
+        reg = ToolRegistry()
+
+        @reg.tool(name="ping", description="A ping tool")
+        async def ping():
+            return {"pong": True}
+
+        @reg.tool(name="echo", description="Echo back text", params_model=EchoParams)
+        async def echo(params: EchoParams):
+            return {"echoed": params.text}
+
+        return reg
+
+    def test_returns_correct_count(self):
+        reg = self._make_registry()
+        tools = reg.to_langchain_tools()
+        assert len(tools) == 2
+
+    def test_tool_names(self):
+        reg = self._make_registry()
+        tools = reg.to_langchain_tools()
+        names = {t.name for t in tools}
+        assert names == {"ping", "echo"}
+
+    def test_tool_descriptions(self):
+        reg = self._make_registry()
+        tools = reg.to_langchain_tools()
+        by_name = {t.name: t for t in tools}
+        assert by_name["ping"].description == "A ping tool"
+        assert by_name["echo"].description == "Echo back text"
 
     @pytest.mark.asyncio
-    async def test_strudel_read_code_wrapper(self):
-        with patch("backend.agent.registry") as mock_reg:
-            mock_reg.execute = AsyncMock(return_value={"code": "s('bd')"})
-            from backend.agent import strudel_read_code
-
-            result = await strudel_read_code.ainvoke({})
-            mock_reg.execute.assert_awaited_once_with("strudel_read_code")
-            assert json.loads(result) == {"code": "s('bd')"}
+    async def test_invoke_no_params(self):
+        reg = self._make_registry()
+        tools = reg.to_langchain_tools()
+        by_name = {t.name: t for t in tools}
+        result = await by_name["ping"].ainvoke({})
+        assert json.loads(result) == {"pong": True}
 
     @pytest.mark.asyncio
-    async def test_strudel_update_code_wrapper(self):
-        with patch("backend.agent.registry") as mock_reg:
-            mock_reg.execute = AsyncMock(return_value={"ok": True})
-            from backend.agent import strudel_update_code
-
-            result = await strudel_update_code.ainvoke({"code": "s('hh')"})
-            mock_reg.execute.assert_awaited_once_with(
-                "strudel_update_code", {"code": "s('hh')"}
-            )
-            assert json.loads(result) == {"ok": True}
-
-    @pytest.mark.asyncio
-    async def test_strudel_read_console_wrapper(self):
-        with patch("backend.agent.registry") as mock_reg:
-            mock_reg.execute = AsyncMock(return_value={"logs": []})
-            from backend.agent import strudel_read_console
-
-            result = await strudel_read_console.ainvoke({})
-            mock_reg.execute.assert_awaited_once_with("strudel_read_console")
-            assert json.loads(result) == {"logs": []}
+    async def test_invoke_with_params(self):
+        reg = self._make_registry()
+        tools = reg.to_langchain_tools()
+        by_name = {t.name: t for t in tools}
+        result = await by_name["echo"].ainvoke({"text": "hello"})
+        assert json.loads(result) == {"echoed": "hello"}

@@ -1,11 +1,9 @@
-import json
 import os
 from functools import lru_cache
 from pathlib import Path
 
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage
-from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -14,30 +12,6 @@ from backend.prompts import render
 from backend.tools.registry import registry
 
 memory = MemorySaver()
-
-
-@tool
-async def strudel_read_code() -> str:
-    """Read the current Strudel code from the editor."""
-    result = await registry.execute("strudel_read_code")
-    return json.dumps(result)
-
-
-@tool
-async def strudel_update_code(code: str) -> str:
-    """Update the Strudel editor code and evaluate it. Pass the full Strudel pattern as the code parameter."""
-    result = await registry.execute("strudel_update_code", {"code": code})
-    return json.dumps(result)
-
-
-@tool
-async def strudel_read_console() -> str:
-    """Read and drain the console log buffer from the frontend. Useful for checking errors after updating code."""
-    result = await registry.execute("strudel_read_console")
-    return json.dumps(result)
-
-
-TOOLS = [strudel_read_code, strudel_update_code, strudel_read_console]
 
 
 def _should_continue(state: MessagesState) -> str:
@@ -49,21 +23,22 @@ def _should_continue(state: MessagesState) -> str:
 
 @lru_cache(maxsize=1)
 def _build_agent():
+    tools = registry.to_langchain_tools()
+
     llm = ChatAnthropic(
         model="claude-sonnet-4-20250514",
         api_key=os.environ["CLAUDE_API_KEY"],
-    ).bind_tools(TOOLS)
+    ).bind_tools(tools)
 
-    tool_context = [{"name": t.name, "description": t.description} for t in registry._tools.values()]
     workshop = Path(__file__).resolve().parent / "knowledge" / "workshop.md"
-    system_prompt = render("system.j2", tools=tool_context, workshop_content=workshop.read_text())
+    system_prompt = render("system.j2", workshop_content=workshop.read_text())
 
     async def chat(state: MessagesState) -> MessagesState:
         messages = [SystemMessage(content=system_prompt), *state["messages"]]
         response = await llm.ainvoke(messages)
         return {"messages": [response]}
 
-    tool_node = ToolNode(TOOLS)
+    tool_node = ToolNode(tools)
 
     graph = StateGraph(MessagesState)
     graph.add_node("chat", chat)

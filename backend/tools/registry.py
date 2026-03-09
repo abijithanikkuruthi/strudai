@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable, Coroutine
 from typing import Any
 
@@ -41,6 +42,30 @@ class ToolRegistry:
             validated = tool_def.params_model(**params)
             return await tool_def.handler(validated)
         return await tool_def.handler()
+
+    def to_langchain_tools(self) -> list:
+        """Convert all registered tools to LangChain StructuredTools."""
+        from langchain_core.tools import StructuredTool
+
+        tools = []
+        for t in self._tools.values():
+
+            async def _handler(t=t, **kwargs):
+                if t.params_model and kwargs:
+                    result = await t.handler(t.params_model(**kwargs))
+                else:
+                    result = await t.handler()
+                return json.dumps(result)
+
+            tools.append(
+                StructuredTool.from_function(
+                    coroutine=_handler,
+                    name=t.name,
+                    description=t.description,
+                    args_schema=t.params_model,
+                )
+            )
+        return tools
 
     def to_schemas(self) -> list[dict]:
         schemas = []

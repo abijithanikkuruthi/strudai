@@ -20,12 +20,14 @@ You will receive two sections: DOCUMENTATION (API docs) and EXAMPLES (real \
 community code). Produce a single reference with two clearly labeled parts:
 
 ## Part 1: API Reference
-Compress the documentation into a terse lookup table. Rules:
-- Prefer tables and short bullet points over prose.
+Compress the documentation into a dense cheat sheet. Rules:
+- Do NOT use markdown tables — they waste tokens on | separators and divider rows.
+- Use compact formats instead: `func(args)` — description, or grouped bullet lists.
+- Group related items on single lines where possible, e.g.: \
+`lpf(freq)` `hpf(freq)` `delay(amt)` `room(amt)` `gain(lvl)` — audio effects
 - Cover: mini-notation syntax, core functions (sound, note, n, s, stack, cat, \
-seq, arrange, silence), effects (lpf, hpf, delay, room, gain, etc.), \
-modifiers (slow, fast, rev, jux, etc.), samples/synths, and tonal helpers \
-(scale, scaleTranspose).
+seq, arrange, silence), effects, modifiers (slow, fast, rev, jux, etc.), \
+samples/synths, and tonal helpers (scale, scaleTranspose).
 - Drop: tutorial prose, motivation, setup instructions, FAQ, niche topics \
 (CSound, Hydra, PWA, device motion, XEN).
 
@@ -40,7 +42,7 @@ are chained, how songs are arranged into sections.
 
 General rules:
 - Output ONLY the compressed reference, no preamble or explanation.
-- Target ~2000 tokens total (~1200 API reference, ~800 style guide).
+- Target ~3000 tokens total (~1500 API reference, ~1500 style guide).
 - Use ```strudel``` fenced blocks for code examples.
 """
 
@@ -70,7 +72,7 @@ def compress() -> str:
     client = anthropic.Anthropic(api_key=os.environ["CLAUDE_API_KEY"])
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=3000,
+        max_tokens=5000,
         system=COMPRESS_PROMPT,
         messages=[{"role": "user", "content": message}],
     )

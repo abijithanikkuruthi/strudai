@@ -1,4 +1,4 @@
-"""Fetch Strudel code examples from awesome-strudel and strudel.cc.
+"""Fetch Strudel code examples from awesome-strudel, GitHub repos, and strudel.cc.
 
 Usage:
     uv run python -m backend.knowledge.fetch_examples
@@ -15,6 +15,13 @@ from backend.knowledge.fetch import RAW_DIR
 AWESOME_STRUDEL_URL = (
     "https://raw.githubusercontent.com/terryds/awesome-strudel/main/README.md"
 )
+
+GITHUB_REPOS: list[dict] = [
+    {
+        "owner": "eefano",
+        "repo": "strudel-songs-collection",
+    },
+]
 
 SUPABASE_URL = "https://pidxdsxphlhzjnzmifth.supabase.co"
 SUPABASE_ANON_KEY = (
@@ -99,8 +106,35 @@ def fetch_code(url: str) -> str | None:
     return None
 
 
+def _fetch_github_repo_examples(owner: str, repo: str) -> list[str]:
+    """Fetch .js files from the root of a GitHub repo as example sections."""
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/contents"
+    req = urllib.request.Request(api_url, headers={"User-Agent": "StrudelGPT"})
+    with urllib.request.urlopen(req) as resp:
+        files = json.loads(resp.read().decode())
+
+    sections: list[str] = []
+    js_files = [f for f in files if f["name"].endswith(".js")]
+    print(f"  Found {len(js_files)} .js files in {owner}/{repo}")
+
+    for f in js_files:
+        title = f["name"].removesuffix(".js")
+        print(f"    Fetching: {title}")
+        try:
+            with urllib.request.urlopen(f["download_url"]) as resp:
+                code = resp.read().decode()
+            sections.append(f"## {title}\n\n```strudel\n{code}\n```")
+        except Exception as e:
+            print(f"    Skipped: {e}")
+
+    return sections
+
+
 def fetch_examples() -> None:
-    """Fetch all examples from awesome-strudel and write examples.md."""
+    """Fetch all examples from awesome-strudel, GitHub repos, and write examples.md."""
+    sections: list[str] = []
+
+    # Awesome-strudel links
     print(f"Fetching {AWESOME_STRUDEL_URL} ...")
     with urllib.request.urlopen(AWESOME_STRUDEL_URL) as resp:
         readme = resp.read().decode()
@@ -108,7 +142,6 @@ def fetch_examples() -> None:
     links = _extract_strudel_links(readme)
     print(f"Found {len(links)} strudel.cc links")
 
-    sections: list[str] = []
     for title, url in links:
         print(f"  Fetching: {title}")
         code = fetch_code(url)
@@ -116,6 +149,13 @@ def fetch_examples() -> None:
             sections.append(f"## {title}\n\n```strudel\n{code}\n```")
         else:
             print(f"  Skipped (no code found)")
+
+    # GitHub repos
+    for repo_info in GITHUB_REPOS:
+        print(f"Fetching {repo_info['owner']}/{repo_info['repo']} ...")
+        sections.extend(
+            _fetch_github_repo_examples(repo_info["owner"], repo_info["repo"])
+        )
 
     combined = "\n\n---\n\n".join(sections)
     RAW_DIR.mkdir(exist_ok=True)

@@ -18,6 +18,7 @@ BASE_RAW_URL = (
 )
 
 KNOWLEDGE_DIR = Path(__file__).resolve().parent
+RAW_DIR = KNOWLEDGE_DIR / "raw"
 
 
 @dataclass
@@ -177,7 +178,8 @@ def fetch_source(name: str) -> None:
         sections.append(cleaned)
 
     combined = "\n\n---\n\n".join(sections)
-    output = KNOWLEDGE_DIR / f"{name}.md"
+    RAW_DIR.mkdir(exist_ok=True)
+    output = RAW_DIR / f"{name}.md"
     output.write_text(combined)
     print(f"Wrote {output} ({len(combined)} chars)")
 

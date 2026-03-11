@@ -7,6 +7,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
+from backend.knowledge.compress import OUTPUT_FILE as KNOWLEDGE_FILE
 from backend.prompts import render
 from backend.tools.registry import registry
 
@@ -29,7 +30,8 @@ def _build_agent():
         api_key=os.environ["CLAUDE_API_KEY"],
     ).bind_tools(tools)
 
-    system_prompt = render("system.j2")
+    knowledge = KNOWLEDGE_FILE.read_text() if KNOWLEDGE_FILE.exists() else ""
+    system_prompt = render("system.j2", knowledge=knowledge)
 
     async def chat(state: MessagesState) -> MessagesState:
         messages = [SystemMessage(content=system_prompt), *state["messages"]]

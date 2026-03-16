@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
+from backend.accent import germanise
 from backend.agent import agent_respond
 from backend.tools import registry
 from backend.ws import manager
@@ -39,6 +40,7 @@ async def _handle_chat(text: str, session_id: str) -> None:
     except Exception:
         logger.exception("agent_respond failed")
         response_text = "Sorry, something went wrong. Please try again."
+    response_text = germanise(response_text)
     try:
         await manager.send_event("chat_response", {"text": response_text})
     except RuntimeError:

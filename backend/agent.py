@@ -21,18 +21,26 @@ def _should_continue(state: MessagesState) -> str:
     return END
 
 
-@lru_cache(maxsize=1)
-def _build_agent():
+AVAILABLE_MODELS = [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6",
+]
+
+DEFAULT_MODEL = "claude-sonnet-4-6"
+
+
+@lru_cache(maxsize=4)
+def _build_agent(model: str = DEFAULT_MODEL):
     tools = registry.to_langchain_tools()
 
     llm = ChatAnthropic(
-        model="claude-sonnet-4-6",
+        model=model,
         api_key=os.environ["CLAUDE_API_KEY"],
     ).bind_tools(tools)
 
     knowledge = KNOWLEDGE_FILE.read_text() if KNOWLEDGE_FILE.exists() else ""
     system_prompt = render("system.j2", knowledge=knowledge)
-    print("System prompt:", system_prompt)
 
     async def chat(state: MessagesState) -> MessagesState:
         messages = [SystemMessage(content=system_prompt), *state["messages"]]
@@ -50,7 +58,7 @@ def _build_agent():
     return graph.compile(checkpointer=memory)
 
 
-async def agent_respond(text: str, session_id: str, on_event=None) -> str:
+async def agent_respond(text: str, session_id: str, on_event=None, model: str = DEFAULT_MODEL) -> str:
     """Run the agent and stream events via the on_event callback.
 
     on_event is called with (event_type, data) where event_type is one of:
@@ -58,7 +66,7 @@ async def agent_respond(text: str, session_id: str, on_event=None) -> str:
     - "tool_call": agent is invoking a tool, data = {"tool": name, "input": args}
     - "tool_result": tool finished, data = {"tool": name, "output": result}
     """
-    agent = _build_agent()
+    agent = _build_agent(model)
     config = {"configurable": {"thread_id": session_id}}
 
     if on_event:

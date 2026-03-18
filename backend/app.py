@@ -10,7 +10,9 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 from backend.accent import germanise
-from backend.agent import agent_respond
+from backend.agent import AVAILABLE_MODELS, DEFAULT_MODEL, agent_respond
+
+_selected_model: str = DEFAULT_MODEL
 from backend.tools import registry
 from backend.ws import manager
 
@@ -29,6 +31,11 @@ async def get_tools() -> JSONResponse:
     return JSONResponse(registry.to_schemas())
 
 
+@app.get("/api/models")
+async def get_models() -> JSONResponse:
+    return JSONResponse({"models": AVAILABLE_MODELS, "selected": _selected_model})
+
+
 async def _handle_chat(text: str, session_id: str) -> None:
     async def on_event(event_type: str, data: dict) -> None:
         try:
@@ -40,7 +47,7 @@ async def _handle_chat(text: str, session_id: str) -> None:
         code = await registry.execute("strudel_read_code")
         current_code = code.get("code", "")
         text = f"[Current code in editor]\n```\n{current_code}\n```\n\n{text}"
-        response_text = await agent_respond(text, session_id, on_event=on_event)
+        response_text = await agent_respond(text, session_id, on_event=on_event, model=_selected_model)
     except asyncio.CancelledError:
         logger.info("Agent task cancelled")
         return
@@ -78,6 +85,11 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if _current_chat_task and not _current_chat_task.done():
                         _current_chat_task.cancel()
                         _current_chat_task = None
+                elif event == "set_model":
+                    global _selected_model
+                    model = data.get("data", {}).get("model", "")
+                    if model in AVAILABLE_MODELS:
+                        _selected_model = model
     except WebSocketDisconnect:
         manager.disconnect()
 

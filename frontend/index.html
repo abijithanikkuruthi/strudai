@@ -325,11 +325,15 @@
     }
 
     #stopBtn {
-      background: #8b2020;
+      background: var(--input-bg);
+      border: 1px solid var(--surface-border);
+      color: var(--text-secondary);
     }
 
     #stopBtn:hover {
-      background: #a52a2a;
+      background: var(--input-bg);
+      border-color: var(--accent);
+      color: var(--text-primary);
     }
 
     .chat-toggle {
@@ -382,8 +386,24 @@
 
     .chat-header {
       display: flex;
-      justify-content: flex-end;
-      padding: 0.25rem 0.25rem 0 0.25rem;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.25rem 0.25rem 0 0.5rem;
+    }
+
+    #modelSelect {
+      background: var(--input-bg);
+      color: var(--text-secondary);
+      border: 1px solid var(--input-border);
+      border-radius: 0.25rem;
+      padding: 0.15rem 0.3rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    #modelSelect:focus {
+      border-color: var(--accent);
+      outline: none;
     }
 
     /* Ensure chat elements stay above the iframe */
@@ -430,6 +450,11 @@ note("c a f e").sound("piano")
     </button>
     <div class="chat-panel hidden no-transition" id="chatPanel">
       <div class="chat-header">
+        <select id="modelSelect">
+          <option value="claude-haiku-4-5-20251001">Haiku</option>
+          <option value="claude-sonnet-4-6" selected>Sonnet</option>
+          <option value="claude-opus-4-6">Opus</option>
+        </select>
         <button class="chat-close" id="chatClose">&times;</button>
       </div>
       <div class="chat-messages" id="chatMessages">
@@ -682,6 +707,13 @@ note("c a f e").sound("piano")
     sendBtn.addEventListener('click', handleSend);
     chatInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleSend();
+    });
+
+    const modelSelect = document.getElementById('modelSelect');
+    modelSelect.addEventListener('change', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'event', event: 'set_model', data: { model: modelSelect.value } }));
+      }
     });
 
     stopBtn.addEventListener('click', () => {

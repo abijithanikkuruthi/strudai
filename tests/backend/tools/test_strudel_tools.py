@@ -31,24 +31,44 @@ class TestStrudelReadConsole:
             assert result == {"logs": ["hello"]}
 
 
-class TestStrudelUpdateCode:
+class TestStrudelRewriteCode:
     @pytest.mark.asyncio
-    async def test_update_code_calls_frontend(self):
-        with patch("backend.tools.strudel_update_code.manager") as mock_mgr:
+    async def test_rewrite_code_calls_frontend(self):
+        with patch("backend.tools.strudel_rewrite_code.manager") as mock_mgr:
             mock_mgr.request_from_frontend = AsyncMock(
                 return_value={"ok": True}
             )
-            from backend.tools.strudel_update_code import (
-                UpdateCodeParams,
-                strudel_update_code,
+            from backend.tools.strudel_rewrite_code import (
+                RewriteCodeParams,
+                strudel_rewrite_code,
             )
 
-            params = UpdateCodeParams(code="s('bd sd')")
-            result = await strudel_update_code(params)
+            params = RewriteCodeParams(code="s('bd sd')")
+            result = await strudel_rewrite_code(params)
             mock_mgr.request_from_frontend.assert_awaited_once_with(
-                "update_code", {"code": "s('bd sd')"}
+                "rewrite_code", {"code": "s('bd sd')"}
             )
             assert result == {"ok": True}
+
+
+class TestStrudelEditCode:
+    @pytest.mark.asyncio
+    async def test_edit_code_calls_frontend(self):
+        with patch("backend.tools.strudel_edit_code.manager") as mock_mgr:
+            mock_mgr.request_from_frontend = AsyncMock(
+                return_value={"ok": True, "logs": []}
+            )
+            from backend.tools.strudel_edit_code import (
+                EditCodeParams,
+                strudel_edit_code,
+            )
+
+            params = EditCodeParams(old_string="bd", new_string="sd")
+            result = await strudel_edit_code(params)
+            mock_mgr.request_from_frontend.assert_awaited_once_with(
+                "edit_code", {"old_string": "bd", "new_string": "sd"}
+            )
+            assert result == {"ok": True, "logs": []}
 
 
 class TestToolsRegisteredInRegistry:
@@ -57,7 +77,8 @@ class TestToolsRegisteredInRegistry:
 
         names = set(registry._tools.keys())
         assert "strudel_read_code" in names
-        assert "strudel_update_code" in names
+        assert "strudel_rewrite_code" in names
+        assert "strudel_edit_code" in names
         assert "strudel_read_console" in names
         assert "web_search" in names
         assert "sample_search" in names
@@ -66,10 +87,11 @@ class TestToolsRegisteredInRegistry:
         from backend.tools import registry
 
         schemas = registry.to_schemas()
-        assert len(schemas) >= 5
+        assert len(schemas) >= 6
         schema_names = {s["name"] for s in schemas}
         assert "strudel_read_code" in schema_names
-        assert "strudel_update_code" in schema_names
+        assert "strudel_rewrite_code" in schema_names
+        assert "strudel_edit_code" in schema_names
         assert "strudel_read_console" in schema_names
         assert "web_search" in schema_names
         assert "sample_search" in schema_names

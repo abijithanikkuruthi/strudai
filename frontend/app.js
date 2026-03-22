@@ -230,7 +230,7 @@ async function handleCommand(msg) {
       case 'read_code':
         responseData = { code: getStrudelCode() };
         break;
-      case 'update_code':
+      case 'rewrite_code':
         if (msg.params?.code != null) {
           consoleBuffer.splice(0);
           const ok = await setStrudelCode(msg.params.code);
@@ -240,6 +240,27 @@ async function handleCommand(msg) {
           responseData = { ok: false, error: 'Missing code param' };
         }
         break;
+      case 'edit_code': {
+        const current = getStrudelCode();
+        const { old_string, new_string } = msg.params || {};
+        if (old_string == null || new_string == null) {
+          responseData = { ok: false, error: 'Missing old_string or new_string param' };
+        } else {
+          const count = current.split(old_string).length - 1;
+          if (count === 0) {
+            responseData = { ok: false, error: 'old_string not found in current code', current_code: current };
+          } else if (count > 1) {
+            responseData = { ok: false, error: `old_string found ${count} times, must be unique`, current_code: current };
+          } else {
+            const newCode = current.replace(old_string, new_string);
+            consoleBuffer.splice(0);
+            const ok = await setStrudelCode(newCode);
+            const logs = consoleBuffer.splice(0);
+            responseData = { ok, logs };
+          }
+        }
+        break;
+      }
       case 'read_console':
         responseData = { logs: consoleBuffer.splice(0) };
         break;

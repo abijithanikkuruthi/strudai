@@ -87,7 +87,10 @@ main {
   z-index: 20;
   font-family: monospace;
   font-size: 0.78rem;
-  transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+  transition:
+    opacity var(--transition-speed) ease,
+    transform var(--transition-speed) ease,
+    visibility 0s linear 0s;
 }
 
 .console-panel.hidden {
@@ -95,6 +98,10 @@ main {
   transform: translateY(1rem);
   pointer-events: none;
   visibility: hidden;
+  transition:
+    opacity var(--transition-speed) ease,
+    transform var(--transition-speed) ease,
+    visibility 0s linear var(--transition-speed);
 }
 
 .console-header {
@@ -186,7 +193,8 @@ main {
   opacity: 1;
   transition:
     transform var(--transition-speed) ease,
-    opacity var(--transition-speed) ease;
+    opacity var(--transition-speed) ease,
+    visibility 0s linear 0s;
 }
 
 .chat-panel.hidden {
@@ -194,6 +202,10 @@ main {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  transition:
+    transform var(--transition-speed) ease,
+    opacity var(--transition-speed) ease,
+    visibility 0s linear var(--transition-speed);
 }
 
 .chat-panel.no-transition {

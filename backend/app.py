@@ -36,7 +36,7 @@ async def get_models() -> JSONResponse:
     return JSONResponse({"models": AVAILABLE_MODELS, "selected": _selected_model})
 
 
-async def _handle_chat(text: str, session_id: str) -> None:
+async def _handle_chat(text: str, session_id: str, api_key: str) -> None:
     async def on_event(event_type: str, data: dict) -> None:
         try:
             await manager.send_event(f"agent_{event_type}", data)
@@ -47,7 +47,7 @@ async def _handle_chat(text: str, session_id: str) -> None:
         code = await registry.execute("strudel_read_code")
         current_code = code.get("code", "")
         text = f"[Current code in editor]\n```\n{current_code}\n```\n\n{text}"
-        response_text = await agent_respond(text, session_id, on_event=on_event, model=_selected_model)
+        response_text = await agent_respond(text, session_id, api_key=api_key, on_event=on_event, model=_selected_model)
     except asyncio.CancelledError:
         logger.info("Agent task cancelled")
         return
@@ -76,8 +76,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 global _current_chat_task
                 event = data.get("event")
                 if event == "chat_message":
-                    text = data.get("data", {}).get("text", "")
-                    task = asyncio.create_task(_handle_chat(text, manager.session_id))
+                    payload = data.get("data", {})
+                    text = payload.get("text", "")
+                    api_key = payload.get("api_key", "")
+                    task = asyncio.create_task(_handle_chat(text, manager.session_id, api_key))
                     _current_chat_task = task
                     _background_tasks.add(task)
                     task.add_done_callback(_background_tasks.discard)

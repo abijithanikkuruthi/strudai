@@ -49,19 +49,84 @@ consoleClose.addEventListener('click', () => {
   consoleToggleBtn.style.display = '';
 });
 
-// --- Chat UI ---
+// --- DOM refs ---
+const chatPanel = document.getElementById('chatPanel');
+const chatToggle = document.getElementById('chatToggle');
+const chatClose = document.getElementById('chatClose');
 const chatMessages = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
 const sendBtn = document.getElementById('sendBtn');
 const stopBtn = document.getElementById('stopBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const settingsDrawer = document.getElementById('settingsDrawer');
+const modelSelect = document.getElementById('modelSelect');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const apiKeySaveBtn = document.getElementById('apiKeySaveBtn');
+const apiKeyMask = document.getElementById('apiKeyMask');
 
+// --- State ---
+let ws;
+let statusEl = null;
+const toolCallEls = new Map();
+
+function getApiKey() {
+  return localStorage.getItem('strudelgpt_api_key') || '';
+}
+
+function saveApiKey(key) {
+  if (key) {
+    localStorage.setItem('strudelgpt_api_key', key);
+  } else {
+    localStorage.removeItem('strudelgpt_api_key');
+  }
+  refreshApiKeyUI();
+}
+
+function refreshApiKeyUI() {
+  const key = getApiKey();
+  sendBtn.disabled = !key;
+  apiKeyMask.textContent = key ? `sk-···${key.slice(-4)}` : '';
+}
+
+// --- Settings drawer ---
+settingsBtn.addEventListener('click', () => {
+  const open = settingsDrawer.hasAttribute('data-open');
+  if (open) {
+    settingsDrawer.removeAttribute('data-open');
+    settingsDrawer.style.display = 'none';
+    settingsBtn.classList.remove('active');
+  } else {
+    settingsDrawer.setAttribute('data-open', '');
+    settingsDrawer.style.display = 'flex';
+    settingsBtn.classList.add('active');
+  }
+});
+
+modelSelect.addEventListener('change', () => {
+  wsSend('set_model', { model: modelSelect.value });
+});
+
+apiKeySaveBtn.addEventListener('click', () => {
+  const key = apiKeyInput.value.trim();
+  if (!key) return;
+  saveApiKey(key);
+  apiKeyInput.value = '';
+});
+
+apiKeyInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') apiKeySaveBtn.click();
+});
+
+apiKeyMask.addEventListener('click', () => {
+  apiKeyMask.textContent = '';
+  apiKeyInput.focus();
+});
+
+// --- Chat UI helpers ---
 function setAgentBusy(busy) {
   sendBtn.classList.toggle('hidden', busy);
   stopBtn.classList.toggle('hidden', !busy);
 }
-
-let statusEl = null;
-const toolCallEls = new Map();
 
 function addMessage(text, role) {
   removeStatus();
@@ -115,22 +180,21 @@ function resolveToolCall(toolName) {
 }
 
 // --- WebSocket ---
-let ws;
+function wsSend(event, data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'event', event, data }));
+  }
+}
+
 function connectWS() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${protocol}//${location.host}/ws`);
-
   ws.onopen = () => origLog('[ws] connected');
-
   ws.onmessage = (evt) => {
     const msg = JSON.parse(evt.data);
-    if (msg.type === 'command') {
-      handleCommand(msg);
-    } else if (msg.type === 'event') {
-      handleEvent(msg);
-    }
+    if (msg.type === 'command') handleCommand(msg);
+    else if (msg.type === 'event') handleEvent(msg);
   };
-
   ws.onclose = () => {
     origLog('[ws] disconnected, reconnecting in 2s...');
     setTimeout(connectWS, 2000);
@@ -138,17 +202,13 @@ function connectWS() {
 }
 
 // --- Strudel editor helpers ---
-function getStrudelEditor() {
-  return document.getElementById('strudelEditor')?.editor;
-}
-
 function getStrudelCode() {
-  const editor = getStrudelEditor();
+  const editor = document.getElementById('strudelEditor')?.editor;
   return editor ? editor.code : '';
 }
 
 async function setStrudelCode(code) {
-  const editor = getStrudelEditor();
+  const editor = document.getElementById('strudelEditor')?.editor;
   if (!editor) return false;
   editor.setCode(code);
   try {
@@ -163,13 +223,11 @@ async function setStrudelCode(code) {
 // --- Command handlers (backend → frontend) ---
 async function handleCommand(msg) {
   let responseData = {};
-
   try {
     switch (msg.action) {
       case 'read_code':
         responseData = { code: getStrudelCode() };
         break;
-
       case 'update_code':
         if (msg.params?.code != null) {
           consoleBuffer.splice(0);
@@ -180,18 +238,15 @@ async function handleCommand(msg) {
           responseData = { ok: false, error: 'Missing code param' };
         }
         break;
-
       case 'read_console':
         responseData = { logs: consoleBuffer.splice(0) };
         break;
-
       default:
         responseData = { error: `Unknown action: ${msg.action}` };
     }
   } catch (err) {
     responseData = { ok: false, error: String(err) };
   }
-
   ws.send(JSON.stringify({ id: msg.id, type: 'response', data: responseData }));
 }
 
@@ -213,14 +268,14 @@ function handleEvent(msg) {
 
 // --- Send chat message ---
 function handleSend() {
+  const apiKey = getApiKey();
+  if (!apiKey) return;
   const text = chatInput.value.trim();
   if (!text) return;
   addMessage(text, 'user');
   chatInput.value = '';
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'event', event: 'chat_message', data: { text } }));
-    setAgentBusy(true);
-  }
+  wsSend('chat_message', { text, api_key: apiKey });
+  setAgentBusy(true);
 }
 
 sendBtn.addEventListener('click', handleSend);
@@ -228,29 +283,15 @@ chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') handleSend();
 });
 
-// --- Model selector ---
-const modelSelect = document.getElementById('modelSelect');
-modelSelect.addEventListener('change', () => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'event', event: 'set_model', data: { model: modelSelect.value } }));
-  }
-});
-
 // --- Stop button ---
 stopBtn.addEventListener('click', () => {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'event', event: 'stop_agent' }));
-  }
+  wsSend('stop_agent');
   removeStatus();
   toolCallEls.clear();
   setAgentBusy(false);
 });
 
 // --- Chat panel toggle ---
-const chatPanel = document.getElementById('chatPanel');
-const chatToggle = document.getElementById('chatToggle');
-const chatClose = document.getElementById('chatClose');
-
 chatClose.addEventListener('click', () => {
   chatPanel.classList.add('hidden');
   setTimeout(() => chatToggle.classList.add('visible'), 200);
@@ -262,4 +303,6 @@ chatToggle.addEventListener('click', () => {
   chatPanel.classList.remove('hidden');
 });
 
+// --- Init ---
+refreshApiKeyUI();
 connectWS();

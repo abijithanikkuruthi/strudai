@@ -45,19 +45,33 @@ note("c a f e").sound("piano")
     </button>
     <div class="chat-panel hidden no-transition" id="chatPanel">
       <div class="chat-header">
-        <select id="modelSelect">
-          <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
-          <option value="claude-sonnet-4-6">Sonnet</option>
-          <option value="claude-opus-4-6">Opus</option>
-        </select>
+        <button class="settings-btn" id="settingsBtn" title="Settings">&#x2699;</button>
         <button class="chat-close" id="chatClose">&times;</button>
+      </div>
+      <div class="settings-drawer" id="settingsDrawer" style="display:none;">
+        <label>
+          Model
+          <select id="modelSelect">
+            <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
+            <option value="claude-sonnet-4-6">Sonnet</option>
+            <option value="claude-opus-4-6">Opus</option>
+          </select>
+        </label>
+        <label>
+          API key
+          <span class="api-key-field">
+            <span class="api-key-mask" id="apiKeyMask"></span>
+            <input type="password" id="apiKeyInput" placeholder="sk-ant-..." />
+            <button id="apiKeySaveBtn">Save</button>
+          </span>
+        </label>
       </div>
       <div class="chat-messages" id="chatMessages">
         <div class="chat-message assistant">Guten Tag, I am Hans Strudel. Tell me vhat you vant to hear and I vill make ze beats.</div>
       </div>
       <div class="chat-input-area">
         <input type="text" id="chatInput" placeholder="Describe a pattern..." autofocus />
-        <button id="sendBtn">Send</button>
+        <button id="sendBtn" disabled>Send</button>
         <button id="stopBtn" class="hidden">Stop</button>
       </div>
     </div>

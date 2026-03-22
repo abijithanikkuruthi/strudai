@@ -1,6 +1,3 @@
-import os
-from functools import lru_cache
-
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -30,13 +27,12 @@ AVAILABLE_MODELS = [
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 
 
-@lru_cache(maxsize=4)
-def _build_agent(model: str = DEFAULT_MODEL):
+def _build_agent(model: str, api_key: str):
     tools = registry.to_langchain_tools()
 
     llm = ChatAnthropic(
         model=model,
-        api_key=os.environ["CLAUDE_API_KEY"],
+        api_key=api_key,
     ).bind_tools(tools)
 
     knowledge = KNOWLEDGE_FILE.read_text() if KNOWLEDGE_FILE.exists() else ""
@@ -58,7 +54,7 @@ def _build_agent(model: str = DEFAULT_MODEL):
     return graph.compile(checkpointer=memory)
 
 
-async def agent_respond(text: str, session_id: str, on_event=None, model: str = DEFAULT_MODEL) -> str:
+async def agent_respond(text: str, session_id: str, *, api_key: str, on_event=None, model: str = DEFAULT_MODEL) -> str:
     """Run the agent and stream events via the on_event callback.
 
     on_event is called with (event_type, data) where event_type is one of:
@@ -66,7 +62,7 @@ async def agent_respond(text: str, session_id: str, on_event=None, model: str = 
     - "tool_call": agent is invoking a tool, data = {"tool": name, "input": args}
     - "tool_result": tool finished, data = {"tool": name, "output": result}
     """
-    agent = _build_agent(model)
+    agent = _build_agent(model, api_key)
     config = {"configurable": {"thread_id": session_id}}
 
     if on_event:

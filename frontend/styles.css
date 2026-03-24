@@ -4,23 +4,16 @@
   box-sizing: border-box;
 }
 
+html {
+  background: #000;
+}
+
 body {
   font-family: system-ui, sans-serif;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-primary);
-  background-image:
-    linear-gradient(45deg, var(--bg-checker-alt) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--bg-checker-alt) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--bg-checker-alt) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--bg-checker-alt) 75%);
-  background-size: var(--checker-size) var(--checker-size);
-  background-position:
-    0 0,
-    0 calc(var(--checker-size) / 2),
-    calc(var(--checker-size) / 2) calc(var(--checker-size) / -2),
-    calc(var(--checker-size) / -2) 0;
+  background: transparent;
 }
 
 main {
@@ -35,7 +28,7 @@ main {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  --background: #000000;
+  --background: transparent;
   --foreground: #00ff41;
   --caret: #00ff41;
   --gutterForeground: #00ff4144;
@@ -64,6 +57,11 @@ main {
 
 .strudel-panel .cm-editor {
   height: 100% !important;
+  background: transparent !important;
+}
+
+.strudel-panel .cm-editor .cm-gutters {
+  background: transparent !important;
 }
 
 .strudel-panel .cm-scroller {

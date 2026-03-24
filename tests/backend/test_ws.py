@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.ws import ConnectionManager
+from backend.connection import ConnectionManager
 
 
 @pytest.fixture

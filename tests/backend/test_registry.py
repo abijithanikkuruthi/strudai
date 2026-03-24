@@ -1,7 +1,7 @@
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from backend.tools.registry import ToolDef, ToolRegistry
+from backend.tools.registry import Tool, Registry
 
 
 class DummyParams(BaseModel):
@@ -10,7 +10,7 @@ class DummyParams(BaseModel):
 
 @pytest.fixture
 def reg():
-    return ToolRegistry()
+    return Registry()
 
 
 class TestToolRegistration:

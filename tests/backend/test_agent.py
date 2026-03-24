@@ -3,7 +3,7 @@ import json
 import pytest
 from pydantic import BaseModel
 
-from backend.tools.registry import ToolRegistry
+from backend.tools.registry import Registry
 
 
 class EchoParams(BaseModel):
@@ -14,7 +14,7 @@ class TestToLangchainTools:
     """Test that to_langchain_tools() produces working LangChain tools."""
 
     def _make_registry(self):
-        reg = ToolRegistry()
+        reg = Registry()
 
         @reg.tool(name="ping", description="A ping tool")
         async def ping():

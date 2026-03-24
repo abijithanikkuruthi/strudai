@@ -1,5 +1,5 @@
 from backend.tools.registry import registry
-from backend.ws import manager
+from backend.connection import manager
 
 
 @registry.tool(

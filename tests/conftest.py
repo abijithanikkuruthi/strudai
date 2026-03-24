@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from backend.tools.registry import ToolRegistry
-from backend.ws import ConnectionManager
+from backend.tools.registry import Registry
+from backend.connection import ConnectionManager
 
 
 @pytest.fixture
 def registry():
-    return ToolRegistry()
+    return Registry()
 
 
 @pytest.fixture

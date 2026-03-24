@@ -5,12 +5,11 @@ import pytest
 class TestStrudelReadCode:
     @pytest.mark.asyncio
     async def test_read_code_calls_frontend(self):
-        with patch("backend.tools.strudel_read_code.manager") as mock_mgr:
+        with patch("backend.tools.read_code.manager") as mock_mgr:
             mock_mgr.request_from_frontend = AsyncMock(
                 return_value={"code": "s('bd sd')"}
             )
-            # Import fresh to use the patched manager
-            from backend.tools.strudel_read_code import strudel_read_code
+            from backend.tools.read_code import strudel_read_code
 
             result = await strudel_read_code()
             mock_mgr.request_from_frontend.assert_awaited_once_with("read_code")
@@ -20,11 +19,11 @@ class TestStrudelReadCode:
 class TestStrudelReadConsole:
     @pytest.mark.asyncio
     async def test_read_console_calls_frontend(self):
-        with patch("backend.tools.strudel_read_console.manager") as mock_mgr:
+        with patch("backend.tools.read_console.manager") as mock_mgr:
             mock_mgr.request_from_frontend = AsyncMock(
                 return_value={"logs": ["hello"]}
             )
-            from backend.tools.strudel_read_console import strudel_read_console
+            from backend.tools.read_console import strudel_read_console
 
             result = await strudel_read_console()
             mock_mgr.request_from_frontend.assert_awaited_once_with("read_console")
@@ -34,11 +33,11 @@ class TestStrudelReadConsole:
 class TestStrudelRewriteCode:
     @pytest.mark.asyncio
     async def test_rewrite_code_calls_frontend(self):
-        with patch("backend.tools.strudel_rewrite_code.manager") as mock_mgr:
+        with patch("backend.tools.rewrite_code.manager") as mock_mgr:
             mock_mgr.request_from_frontend = AsyncMock(
                 return_value={"ok": True}
             )
-            from backend.tools.strudel_rewrite_code import (
+            from backend.tools.rewrite_code import (
                 RewriteCodeParams,
                 strudel_rewrite_code,
             )
@@ -54,11 +53,11 @@ class TestStrudelRewriteCode:
 class TestStrudelEditCode:
     @pytest.mark.asyncio
     async def test_edit_code_calls_frontend(self):
-        with patch("backend.tools.strudel_edit_code.manager") as mock_mgr:
+        with patch("backend.tools.edit_code.manager") as mock_mgr:
             mock_mgr.request_from_frontend = AsyncMock(
                 return_value={"ok": True, "logs": []}
             )
-            from backend.tools.strudel_edit_code import (
+            from backend.tools.edit_code import (
                 EditCodeParams,
                 strudel_edit_code,
             )

@@ -16,16 +16,16 @@ ALGOLIA_HEADERS = {
 }
 
 
-class StrudelDocsSearchParams(BaseModel):
+class DocsSearchParams(BaseModel):
     query: str
 
 
 @registry.tool(
     name="strudel_docs_search",
     description="Search the official Strudel documentation at strudel.cc for functions, effects, and techniques.",
-    params_model=StrudelDocsSearchParams,
+    params_model=DocsSearchParams,
 )
-async def strudel_docs_search(params: StrudelDocsSearchParams) -> dict:
+async def strudel_docs_search(params: DocsSearchParams) -> dict:
     def _search() -> list[dict]:
         body = json.dumps({"query": params.query, "hitsPerPage": 5}).encode()
         req = urllib.request.Request(ALGOLIA_URL, data=body, headers=ALGOLIA_HEADERS)

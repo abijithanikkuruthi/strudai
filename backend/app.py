@@ -10,14 +10,14 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 from backend.accent import germanise
-from backend.agent import AVAILABLE_MODELS, DEFAULT_MODEL, agent_respond
-from backend.fixer import fixer_respond, reset_fixer_state
-from backend.performer import performer_respond
+from backend.agents import AVAILABLE_MODELS, DEFAULT_MODEL, agent_respond
+from backend.agents import fixer_respond, reset_fixer_state
+from backend.agents import performer_respond
 
 _selected_model: str = DEFAULT_MODEL
 _selected_performer_model: str = DEFAULT_MODEL
 from backend.tools import registry
-from backend.ws import manager
+from backend.connection import manager
 
 logger = logging.getLogger(__name__)
 

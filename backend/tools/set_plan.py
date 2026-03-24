@@ -55,7 +55,11 @@ async def start_set() -> dict:
         "bpm": bpm,
         "plan": _current_plan,
     })
-    return {"status": "started", "bpm": bpm, "cps": cps}
+    return {"status": "started", "bpm": bpm, "cps": cps, "plan": _current_plan}
+
+
+def get_current_plan() -> dict | None:
+    return _current_plan
 
 
 @registry.tool(

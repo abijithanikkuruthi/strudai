@@ -43,12 +43,17 @@ class ToolRegistry:
             return await tool_def.handler(validated)
         return await tool_def.handler()
 
-    def to_langchain_tools(self) -> list:
-        """Convert all registered tools to LangChain StructuredTools."""
+    def to_langchain_tools(self, include: set[str] | None = None) -> list:
+        """Convert registered tools to LangChain StructuredTools.
+
+        If *include* is given, only tools whose names are in the set are returned.
+        """
         from langchain_core.tools import StructuredTool
 
         tools = []
         for t in self._tools.values():
+            if include is not None and t.name not in include:
+                continue
 
             async def _handler(t=t, **kwargs):
                 if t.params_model and kwargs:

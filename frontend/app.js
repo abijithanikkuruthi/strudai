@@ -60,6 +60,7 @@ const stopBtn = document.getElementById('stopBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsDrawer = document.getElementById('settingsDrawer');
 const modelSelect = document.getElementById('modelSelect');
+const performerModelSelect = document.getElementById('performerModelSelect');
 const apiKeyInput = document.getElementById('apiKeyInput');
 const apiKeySaveBtn = document.getElementById('apiKeySaveBtn');
 const apiKeyMask = document.getElementById('apiKeyMask');
@@ -170,6 +171,11 @@ settingsBtn.addEventListener('click', () => {
 modelSelect.addEventListener('change', () => {
   wsSend('set_model', { model: modelSelect.value });
   console.log(`[model] switched to ${modelSelect.value}`);
+});
+
+performerModelSelect.addEventListener('change', () => {
+  wsSend('set_performer_model', { model: performerModelSelect.value });
+  console.log(`[performer model] switched to ${performerModelSelect.value}`);
 });
 
 apiKeySaveBtn.addEventListener('click', () => {
@@ -366,7 +372,7 @@ function handleEvent(msg) {
         const info = getCurrentCycle();
         if (info.cycle >= 0) checkBarMarkers(info.cycle);
         updateSetStatus(info.cycle);
-        wsSend('cycle_update', info);
+        wsSend('cycle_update', { ...info, api_key: getApiKey() });
       }, 1000);
       setStatusBar.classList.remove('hidden');
       updateSetStatus(0);
@@ -392,6 +398,12 @@ function handleEvent(msg) {
         console.log(`[set]   bar ${s.bar}: ${s.note}`);
       }
     }
+  } else if (msg.event === 'performer_tool_call') {
+    const inputStr = typeof msg.data.input === 'object' ? JSON.stringify(msg.data.input) : String(msg.data.input);
+    const truncated = inputStr.length > 120 ? inputStr.slice(0, 120) + '...' : inputStr;
+    console.log(`[performer] ${msg.data.tool}(${truncated})`);
+  } else if (msg.event === 'performer_tool_result') {
+    console.log(`[performer] ${msg.data.tool} done`);
   } else if (msg.event === 'chat_response') {
     removeStatus();
     toolCallEls.clear();

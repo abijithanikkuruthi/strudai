@@ -11,8 +11,10 @@ load_dotenv()
 
 from backend.accent import germanise
 from backend.agent import AVAILABLE_MODELS, DEFAULT_MODEL, agent_respond
+from backend.performer import performer_respond
 
 _selected_model: str = DEFAULT_MODEL
+_selected_performer_model: str = DEFAULT_MODEL
 from backend.tools import registry
 from backend.ws import manager
 
@@ -24,6 +26,28 @@ FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 _background_tasks: set[asyncio.Task] = set()
 _current_chat_task: asyncio.Task | None = None
+_performer_task: asyncio.Task | None = None
+
+# Set state for performer section tracking
+_active_plan: dict | None = None
+_bar_markers: list[dict] = []  # [{ bar, song_name, song_description, note }]
+_last_performer_section_bar: int = -1
+
+
+def _build_bar_markers(plan: dict) -> list[dict]:
+    """Build sorted list of bar markers with song context for the performer."""
+    markers = []
+    offset = 0
+    for song in plan["songs"]:
+        for section in song["sections"]:
+            markers.append({
+                "bar": offset + section["bar"],
+                "song_name": song["name"],
+                "song_description": song["description"],
+                "note": section["note"],
+            })
+        offset += song["bars"]
+    return sorted(markers, key=lambda m: m["bar"])
 
 
 @app.get("/api/tools")
@@ -33,7 +57,11 @@ async def get_tools() -> JSONResponse:
 
 @app.get("/api/models")
 async def get_models() -> JSONResponse:
-    return JSONResponse({"models": AVAILABLE_MODELS, "selected": _selected_model})
+    return JSONResponse({
+        "models": AVAILABLE_MODELS,
+        "selected": _selected_model,
+        "performer_selected": _selected_performer_model,
+    })
 
 
 async def _handle_chat(text: str, session_id: str, api_key: str) -> None:
@@ -54,11 +82,77 @@ async def _handle_chat(text: str, session_id: str, api_key: str) -> None:
     except Exception:
         logger.exception("agent_respond failed")
         response_text = "Sorry, something went wrong. Please try again."
+
     response_text = germanise(response_text)
     try:
         await manager.send_event("chat_response", {"text": response_text})
     except RuntimeError:
         logger.warning("Could not send chat response — no frontend connected")
+
+
+def _activate_set(plan: dict) -> None:
+    """Store the plan and build bar markers for performer section tracking."""
+    global _active_plan, _bar_markers, _last_performer_section_bar
+    _active_plan = plan
+    _bar_markers = _build_bar_markers(plan)
+    _last_performer_section_bar = -1
+
+
+def _deactivate_set() -> None:
+    """Clear set state and cancel performer if running."""
+    global _active_plan, _bar_markers, _last_performer_section_bar, _performer_task
+    _active_plan = None
+    _bar_markers = []
+    _last_performer_section_bar = -1
+    if _performer_task and not _performer_task.done():
+        _performer_task.cancel()
+        _performer_task = None
+
+
+async def _handle_performer_section(marker: dict, session_id: str, api_key: str) -> None:
+    """Launch the performer agent for a new section."""
+    async def on_event(event_type: str, data: dict) -> None:
+        try:
+            await manager.send_event(f"performer_{event_type}", data)
+        except RuntimeError:
+            logger.debug("Skipping performer event %s — no frontend connected", event_type)
+
+    prompt_vars = {
+        "title": _active_plan["title"],
+        "genre": _active_plan["genre"],
+        "bpm": _active_plan["bpm"],
+        "instructions": _active_plan.get("instructions", ""),
+        "song_name": marker["song_name"],
+        "song_description": marker["song_description"],
+    }
+
+    instruction = marker["note"]
+    performer_session = f"{session_id}_performer"
+
+    try:
+        await performer_respond(
+            instruction,
+            performer_session,
+            api_key=api_key,
+            on_event=on_event,
+            model=_selected_performer_model,
+            prompt_vars=prompt_vars,
+        )
+    except asyncio.CancelledError:
+        logger.info("Performer task cancelled")
+    except Exception:
+        logger.exception("performer_respond failed")
+
+
+def _get_section_at_cycle(cycle: int) -> dict | None:
+    """Find the bar marker for the current cycle."""
+    current = None
+    for m in _bar_markers:
+        if m["bar"] <= cycle:
+            current = m
+        else:
+            break
+    return current
 
 
 @app.websocket("/ws")
@@ -73,7 +167,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 manager.resolve(data["id"], data.get("data", {}))
 
             elif msg_type == "event":
-                global _current_chat_task
+                global _current_chat_task, _performer_task
                 event = data.get("event")
                 if event == "chat_message":
                     payload = data.get("data", {})
@@ -87,11 +181,44 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if _current_chat_task and not _current_chat_task.done():
                         _current_chat_task.cancel()
                         _current_chat_task = None
+                elif event == "stop_set":
+                    _deactivate_set()
                 elif event == "set_model":
                     global _selected_model
                     model = data.get("data", {}).get("model", "")
                     if model in AVAILABLE_MODELS:
                         _selected_model = model
+                elif event == "set_performer_model":
+                    global _selected_performer_model
+                    model = data.get("data", {}).get("model", "")
+                    if model in AVAILABLE_MODELS:
+                        _selected_performer_model = model
+                elif event == "cycle_update":
+                    global _last_performer_section_bar
+                    if _active_plan is None:
+                        from backend.tools.set_plan import get_current_plan
+                        plan = get_current_plan()
+                        if plan:
+                            _activate_set(plan)
+                        else:
+                            continue
+                    cycle = data.get("data", {}).get("cycle", -1)
+                    section = _get_section_at_cycle(cycle)
+                    if section and section["bar"] != _last_performer_section_bar:
+                        _last_performer_section_bar = section["bar"]
+                        api_key = data.get("data", {}).get("api_key", "")
+                        if not api_key:
+                            # Fall back — get from localStorage via a best-effort approach
+                            api_key = ""
+                        # Cancel previous performer task if still running
+                        if _performer_task and not _performer_task.done():
+                            _performer_task.cancel()
+                        task = asyncio.create_task(
+                            _handle_performer_section(section, manager.session_id, api_key)
+                        )
+                        _performer_task = task
+                        _background_tasks.add(task)
+                        task.add_done_callback(_background_tasks.discard)
     except WebSocketDisconnect:
         manager.disconnect()
 

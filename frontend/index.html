@@ -60,6 +60,16 @@ note("c a f e").sound("piano")
           </select>
         </label>
         <label>
+          Performer model
+          <span class="info-hint"
+            data-tooltip="Model used by the performer subagent during live sets. The performer executes the set plan autonomously — its tool calls appear in the console.">i</span>
+          <select id="performerModelSelect">
+            <option value="claude-haiku-4-5-20251001" selected>Haiku</option>
+            <option value="claude-sonnet-4-6">Sonnet</option>
+            <option value="claude-opus-4-6">Opus</option>
+          </select>
+        </label>
+        <label>
           API key
           <span class="info-hint"
             data-tooltip="Get your key at console.anthropic.com → API Keys.">i</span>

@@ -297,5 +297,16 @@ async def index() -> FileResponse:
     return FileResponse(FRONTEND_DIR / "index.html")
 
 
+@app.get("/favicon.ico")
+async def favicon() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "public" / "hans_logo.svg", media_type="image/svg+xml")
+
+
+@app.get("/apple-touch-icon.png")
+@app.get("/apple-touch-icon-precomposed.png")
+async def apple_touch_icon() -> FileResponse:
+    return FileResponse(FRONTEND_DIR / "public" / "hans_logo.svg", media_type="image/svg+xml")
+
+
 # Serve other static frontend files
 app.mount("/", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")

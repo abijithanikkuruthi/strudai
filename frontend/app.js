@@ -70,6 +70,9 @@ const setStatusBar = document.getElementById('setStatusBar');
 const setStatusLabel = document.getElementById('setStatusLabel');
 const setStatusSection = document.getElementById('setStatusSection');
 const setStopBtn = document.getElementById('setStopBtn');
+const setPlanBtn = document.getElementById('setPlanBtn');
+const setPlanOverlay = document.getElementById('setPlanOverlay');
+const setPlanBody = document.getElementById('setPlanBody');
 const errorTriggerToggle = document.getElementById('errorTriggerToggle');
 
 // --- State ---
@@ -91,6 +94,7 @@ let cycleInterval = null;
 let lastCycle = -1;
 let totalBars = 0;
 let barMarkers = []; // [{ bar: absoluteBar, song: string, note: string }]
+let activePlan = null;
 
 function getAudioCtx() {
   return typeof getAudioContext === 'function' ? getAudioContext() : null;
@@ -129,6 +133,53 @@ function updateSetStatus(cycle) {
   setStatusLabel.textContent = `Set active — bar ${cycle}/${totalBars}`;
   const section = getCurrentSection(cycle);
   setStatusSection.textContent = section ? `${section.song}: ${section.note}` : '';
+  // Update active section highlight in plan overlay
+  if (!setPlanOverlay.classList.contains('hidden')) renderPlanOverlay(cycle);
+}
+
+function renderPlanOverlay(cycle) {
+  if (!activePlan) return;
+  const current = getCurrentSection(typeof cycle === 'number' ? cycle : -1);
+
+  // Preserve focus — skip full re-render if only highlight changed
+  const focused = setPlanBody.querySelector('.set-plan-section-note:focus');
+  if (focused) {
+    // Just update active classes
+    for (const el of setPlanBody.querySelectorAll('.set-plan-section')) {
+      const bar = parseInt(el.dataset.bar, 10);
+      el.classList.toggle('active', current && current.bar === bar);
+    }
+    return;
+  }
+
+  let html = '';
+  let songIdx = 0;
+  let barOffset = 0;
+  for (const song of activePlan.songs) {
+    html += `<div class="set-plan-song">`;
+    html += `<div class="set-plan-song-name">${esc(song.name)}</div>`;
+    html += `<div class="set-plan-song-meta">${song.bars} bars — ${esc(song.description)}</div>`;
+    let secIdx = 0;
+    for (const s of song.sections) {
+      const absBar = barOffset + s.bar;
+      const isActive = current && current.bar === absBar;
+      html += `<div class="set-plan-section${isActive ? ' active' : ''}" data-bar="${absBar}">`;
+      html += `<span class="set-plan-section-bar">bar ${absBar}:</span>`;
+      html += `<span class="set-plan-section-note" contenteditable data-song="${songIdx}" data-sec="${secIdx}">${esc(s.note)}</span>`;
+      html += `</div>`;
+      secIdx++;
+    }
+    html += `</div>`;
+    barOffset += song.bars;
+    songIdx++;
+  }
+  setPlanBody.innerHTML = html;
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
 function checkBarMarkers(cycle) {
@@ -416,7 +467,8 @@ function handleEvent(msg) {
       cycleCps = msg.data.cps || 0.5;
       cycleOrigin = ctx.currentTime;
       lastCycle = 0;
-      barMarkers = msg.data.plan ? buildBarMarkers(msg.data.plan) : [];
+      if (msg.data.plan) activePlan = msg.data.plan;
+      barMarkers = activePlan ? buildBarMarkers(activePlan) : [];
       if (cycleInterval) clearInterval(cycleInterval);
       cycleInterval = setInterval(() => {
         const info = getCurrentCycle();
@@ -436,10 +488,14 @@ function handleEvent(msg) {
     cycleOrigin = null;
     lastCycle = -1;
     barMarkers = [];
+    activePlan = null;
     setStatusBar.classList.add('hidden');
+    setPlanOverlay.classList.add('hidden');
+    setPlanBtn.classList.remove('active');
     console.log('[set] stopped');
   } else if (msg.event === 'plan_set') {
     const p = msg.data;
+    activePlan = p;
     console.log(`[set] ${p.title} — ${p.genre} @ ${p.bpm} bpm`);
     if (p.instructions) console.log(`[set] ${p.instructions}`);
     for (const song of p.songs) {
@@ -503,9 +559,35 @@ setStopBtn.addEventListener('click', () => {
   cycleOrigin = null;
   lastCycle = -1;
   barMarkers = [];
+  activePlan = null;
   setStatusBar.classList.add('hidden');
+  setPlanOverlay.classList.add('hidden');
+  setPlanBtn.classList.remove('active');
   console.log('[set] interrupted by user');
 });
+
+// --- Set plan view ---
+setPlanBtn.addEventListener('click', () => {
+  if (!activePlan) return;
+  const isHidden = setPlanOverlay.classList.toggle('hidden');
+  setPlanBtn.classList.toggle('active', !isHidden);
+  if (!isHidden) {
+    const { cycle } = getCurrentCycle();
+    renderPlanOverlay(cycle);
+  }
+});
+
+// Sync edits back to activePlan
+setPlanBody.addEventListener('blur', (e) => {
+  const el = e.target;
+  if (!el.classList.contains('set-plan-section-note') || !activePlan) return;
+  const songIdx = parseInt(el.dataset.song, 10);
+  const secIdx = parseInt(el.dataset.sec, 10);
+  const newNote = el.textContent.trim();
+  if (activePlan.songs[songIdx] && activePlan.songs[songIdx].sections[secIdx]) {
+    activePlan.songs[songIdx].sections[secIdx].note = newNote;
+  }
+}, true);
 
 // --- Chat panel toggle ---
 chatClose.addEventListener('click', () => {

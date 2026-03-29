@@ -95,7 +95,13 @@ note("c a f e").sound("piano")
           <span class="set-status-label" id="setStatusLabel">Set active</span>
           <span class="set-status-section" id="setStatusSection"></span>
         </div>
-        <button class="set-stop-btn" id="setStopBtn" title="Interrupt set">Stop set</button>
+        <div class="set-status-actions">
+          <button class="set-plan-btn" id="setPlanBtn" title="View set">View set</button>
+          <button class="set-stop-btn" id="setStopBtn" title="Interrupt set">Stop set</button>
+        </div>
+      </div>
+      <div class="set-plan-overlay hidden" id="setPlanOverlay">
+        <div class="set-plan-body" id="setPlanBody"></div>
       </div>
       <div class="chat-messages" id="chatMessages">
         <div class="chat-message assistant">Guten Tag, I am Hans Strudel. Tell me vhat you vant to hear and I vill make

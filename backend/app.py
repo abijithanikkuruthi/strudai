@@ -141,7 +141,7 @@ async def _handle_performer_section(marker: dict, session_id: str, api_key: str)
     }
 
     instruction = marker["note"]
-    performer_session = f"{session_id}_performer"
+    performer_session = f"{session_id}_performer_bar{marker['bar']}"
 
     try:
         await performer_respond(

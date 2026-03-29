@@ -448,6 +448,99 @@ main {
   50% { opacity: 1; }
 }
 
+.set-status-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.set-plan-btn {
+  background: none;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.set-plan-btn:hover,
+.set-plan-btn.active {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+/* --- Set plan overlay --- */
+
+.set-plan-overlay {
+  display: flex;
+  flex-direction: column;
+  max-height: 60%;
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface);
+  font-size: 0.78rem;
+}
+
+.set-plan-overlay.hidden {
+  display: none;
+}
+
+.set-plan-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.set-plan-song {
+  margin-bottom: 0.5rem;
+}
+
+.set-plan-song-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.set-plan-song-meta {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.set-plan-section {
+  display: flex;
+  gap: 0.35rem;
+  padding-left: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.set-plan-section.active {
+  color: #00ff41;
+}
+
+.set-plan-section-bar {
+  flex-shrink: 0;
+}
+
+.set-plan-section-note {
+  flex: 1;
+  min-width: 0;
+  cursor: text;
+  border-radius: 0.15rem;
+  padding: 0 0.2rem;
+  margin: -0.05rem -0.2rem;
+}
+
+.set-plan-section-note:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.set-plan-section-note:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .set-stop-btn {
   background: none;
   border: 1px solid var(--surface-border);

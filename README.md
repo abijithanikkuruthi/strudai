@@ -1,6 +1,6 @@
 # StrudelGPT
 
-An AI assistant for [Strudel](https://strudel.cc/), the browser-based live coding music platform. Chat with "Hans Strudel" to create, modify, and understand Strudel patterns.
+An AI assistant for [Strudel](https://strudel.cc/), the browser-based live coding music platform. Chat with "Hans Strudel" to create, modify, and understand Strudel patterns — or let the autonomous performer play a live set for you.
 
 ## Quick start
 
@@ -18,32 +18,67 @@ Open <http://localhost:8000>. Click the Hans Strudel icon in the top-right to op
 
 The frontend embeds a `<strudel-editor>` web component (via `@strudel/repl` CDN) and connects to the backend over WebSocket. The editor code is automatically sent with each chat message so the agent always knows what's playing. Responses are post-processed with a light German accent.
 
+### Skills-based architecture
+
+Agent capabilities are composed from **skills** — declarative units that bundle a prompt fragment, a tool subset, and optional knowledge/examples. Skills are combined at agent-construction time to create purpose-built agents:
+
+| Agent | Skills | Purpose |
+|-------|--------|---------|
+| **Chat** | persona, coding, rewriting, debugging, docs, samples, set planning | Interactive assistant for the chat panel |
+| **Performer** | performing, coding, debugging, docs, samples | Autonomous live performer that plays a set |
+| **Fixer** | fixing, coding, docs, samples | Auto-fixes code errors detected in the console |
+
+#### Genre skills
+
+The performer agent can play in specific genres. Each genre skill provides style-specific prompt guidance and example patterns:
+
+ambient, breakbeat, dnb, dub, hip-hop, house, idm, minimal, synthwave, techno
+
 ### Tools
 
 | Tool | Description |
 |------|-------------|
 | `strudel_read_code` | Read current code from the editor |
-| `strudel_update_code` | Write and evaluate new code |
+| `strudel_edit_code` | Apply targeted edits to the current code |
+| `strudel_rewrite_code` | Replace the entire editor contents |
 | `strudel_read_console` | Check for errors or logs |
+| `strudel_read_cycle` | Read the current musical cycle position |
 | `strudel_docs_search` | Search official Strudel documentation (Algolia) |
 | `sample_search` | Find sample packs and sounds by name |
 | `web_search` | General web search (DuckDuckGo) |
+| `set_plan` | Create or update a set plan for the performer |
+| `verify_fix` | Verify that a code fix resolved the error |
 
 ### Settings
 
 - **Model** — choose between Haiku (fast/cheap, default), Sonnet (balanced), or Opus (most capable)
 - **API key** — stored in your browser's `localStorage`, never on the server. Each user brings their own key.
+- **Auto-fix errors** - calls the 'fixer' persona to fix any errors that arise anytime the code is compiled
+
+The settings menu also shows the token usage and estimated costs for the current session.
 
 ## Project structure
 
 ```text
 backend/
   app.py              FastAPI server, WebSocket endpoint, static files
-  agent.py            LangGraph agent with tool bindings
+  agents.py           LangGraph agent runner, skill composition
   accent.py           German accent post-processing
-  ws.py               WebSocket connection manager
-  tools/              Tool implementations + registry
-  prompts/            Jinja2 system prompt template
+  connection.py       WebSocket connection manager
+  usage.py            Token usage tracking and cost estimation
+  skills/
+    base.py            Skill dataclass definition
+    __init__.py        compose() — merges skills into tool set + prompt
+    persona.py         Hans Strudel personality
+    coding.py          Code generation and rewriting
+    debugging.py       Error diagnosis
+    fixing.py          Autonomous error fixing
+    performing.py      Autonomous live performance
+    set_planning.py    Set plan management
+    docs.py            Documentation search
+    samples.py         Sample/sound search
+    genres/            Genre-specific prompt + examples (10 genres)
+  tools/               Tool implementations + registry
   knowledge/
     build.py           Run full pipeline (fetch + compress)
     fetch.py           Fetch Strudel docs from Codeberg

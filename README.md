@@ -85,4 +85,4 @@ Requires `ANTHROPIC_API_KEY` env var (or `.env` file) for compression.
 
 This project is a thin wrapper around [Strudel](https://strudel.cc/) — a beautiful live coding environment by Alex McLean and contributors that runs entirely in the browser. If you enjoy it, consider [supporting Tidal Cycles](https://opencollective.com/tidalcycles).
 
-Community examples sourced from [awesome-strudel](https://github.com/terryds/awesome-strudel) and [strudel-songs-collection](https://github.com/eefano/strudel-songs-collection).
+To instruct the model on how to make strudel code, I pull some examples. Community examples sourced from [awesome-strudel](https://github.com/terryds/awesome-strudel) and [strudel-songs-collection](https://github.com/eefano/strudel-songs-collection).

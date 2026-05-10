@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import * as store from "../store";
 import { listModels, type ModelOption } from "../agent/api";
+import { TOOL_META, type ToolMeta } from "../agent/tools";
 
 interface SettingsDrawerProps {
   open: boolean;
@@ -22,6 +23,34 @@ export function SettingsDrawer({
   );
   const [saveState, setSaveState] = useState<"idle" | "saving" | "ok" | "fail">("idle");
   const [saveError, setSaveError] = useState<string>("");
+  const [toolToggles, setToolToggles] = useState<Record<string, boolean>>(store.getToolToggles());
+  const [toolsExpanded, setToolsExpanded] = useState(false);
+
+  function handleToggleTool(name: string, enabled: boolean) {
+    store.setToolToggle(name, enabled);
+    setToolToggles((prev) => ({ ...prev, [name]: enabled }));
+  }
+
+  function handleToggleCategory(tools: ToolMeta[], enable: boolean) {
+    setToolToggles((prev) => {
+      const next = { ...prev };
+      for (const t of tools) {
+        next[t.name] = enable;
+        store.setToolToggle(t.name, enable);
+      }
+      return next;
+    });
+  }
+
+  const toolsByCategory = useMemo(() => {
+    const groups: Record<string, ToolMeta[]> = {};
+    for (const t of TOOL_META) {
+      (groups[t.category] ??= []).push(t);
+    }
+    return groups;
+  }, []);
+
+  const enabledCount = TOOL_META.filter((t) => toolToggles[t.name] !== false).length;
 
   useEffect(() => {
     store.setModel(model);
@@ -148,6 +177,54 @@ export function SettingsDrawer({
             </button>
           </span>
         </label>
+
+        <div className="tools-section">
+          <button
+            type="button"
+            className="tools-summary"
+            onClick={() => setToolsExpanded((v) => !v)}
+          >
+            <span>Tools</span>
+            <span className="tools-summary-meta">
+              {enabledCount}/{TOOL_META.length} enabled
+              <span className="tools-chevron">▸</span>
+            </span>
+          </button>
+          <div className="tools-groups-wrapper" data-open={toolsExpanded ? "" : undefined}>
+            <div className="tools-groups">
+              {Object.entries(toolsByCategory).map(([category, tools]) => {
+                const allOn = tools.every((t) => toolToggles[t.name] !== false);
+                return (
+                  <div key={category} className="tool-group">
+                    <label className="tool-group-header">
+                      <input
+                        type="checkbox"
+                        checked={allOn}
+                        onChange={(e) => handleToggleCategory(tools, e.target.checked)}
+                      />
+                      <span>{category}</span>
+                    </label>
+                    <div className="tool-group-items">
+                      {tools.map((t) => {
+                        const enabled = toolToggles[t.name] !== false;
+                        return (
+                          <label key={t.name} className="tool-toggle" title={t.description}>
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              onChange={(e) => handleToggleTool(t.name, e.target.checked)}
+                            />
+                            <span>{t.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         <label>
           <span>Usage</span>

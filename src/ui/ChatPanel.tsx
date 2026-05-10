@@ -171,7 +171,9 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
             {
               role: "tool" as const,
               toolName: block.name,
-              content: block.name === "strudel_rewrite_code" ? "Rewriting code..." : block.name,
+              content: block.name === "strudel_rewrite_code" ? "Rewriting code..."
+                : block.name === "strudel_edit_code" ? "Editing code..."
+                : block.name,
             },
           ]);
 
@@ -189,7 +191,7 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
             if (last.role === "tool" && last.toolName === block.name) {
               updated[updated.length - 1] = {
                 ...last,
-                content: block.name === "strudel_rewrite_code" ? "Code updated" : resultStr,
+                content: (block.name === "strudel_rewrite_code" || block.name === "strudel_edit_code") ? "Code updated" : resultStr,
               };
             }
             return updated;

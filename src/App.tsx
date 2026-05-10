@@ -1,7 +1,7 @@
 import { useRef } from "react";
-import type { StrudelEditorHandle } from "./types";
-import { StrudelEditor } from "./components/StrudelEditor";
-import { ChatPanel } from "./components/ChatPanel";
+import type { StrudelEditorHandle } from "./agent/types";
+import { StrudelEditor } from "./ui/StrudelEditor";
+import { ChatPanel } from "./ui/ChatPanel";
 
 export function App() {
   const editorRef = useRef<StrudelEditorHandle>(null);

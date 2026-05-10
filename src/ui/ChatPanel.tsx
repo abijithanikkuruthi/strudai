@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { Message, StrudelEditorHandle } from "../types";
+import type { Message, StrudelEditorHandle } from "../agent/types";
 import { MessageBubble } from "./MessageBubble";
 import { SettingsDrawer } from "./SettingsDrawer";
-import { streamChat } from "../api";
-import { SYSTEM_PROMPT } from "../system-prompt";
+import { streamChat } from "../agent/api";
+import { SYSTEM_PROMPT } from "../agent/system-prompt";
 import * as store from "../store";
 
 interface ChatPanelProps {

@@ -1,5 +1,5 @@
 import { useImperativeHandle, forwardRef } from "react";
-import type { StrudelEditorElement, StrudelEditorHandle } from "../types";
+import type { StrudelEditorElement, StrudelEditorHandle } from "../agent/types";
 
 /**
  * The <strudel-editor> element lives in index.html (outside React)

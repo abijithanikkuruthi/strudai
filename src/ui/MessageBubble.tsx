@@ -1,4 +1,4 @@
-import type { Message } from "../types";
+import type { Message } from "../agent/types";
 
 export function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";

@@ -1,11 +1,29 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { StrudelEditorHandle } from "./types";
 
+export interface ToolMeta {
+  name: string;
+  label: string;
+  description: string;
+  category: string;
+}
+
+export const TOOL_META: ToolMeta[] = [
+  { name: "strudel_edit_code", label: "Edit code", description: "Targeted search-and-replace edits", category: "Editor" },
+  { name: "strudel_rewrite_code", label: "Rewrite code", description: "Replace the entire editor code", category: "Editor" },
+  { name: "web_search", label: "Web search", description: "Search the web (server-side, billed)", category: "Research" },
+];
+
+export function getActiveTools(enabled: Record<string, boolean>): Anthropic.ToolUnion[] {
+  return TOOLS.filter((t) => enabled[t.name] !== false);
+}
+
 export const TOOLS: Anthropic.ToolUnion[] = [
   {
     type: "web_search_20260209",
     name: "web_search",
     max_uses: 3,
+    allowed_callers: ["direct"],
   },
   {
     name: "strudel_rewrite_code",

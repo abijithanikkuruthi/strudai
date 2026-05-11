@@ -127,8 +127,9 @@ async function docsSearch(query: string): Promise<string> {
   return JSON.stringify({ query, results });
 }
 
-const SAMPLE_INDEX_URL =
-  "https://strudel-samples.alternet.site/static/strudel_index.json";
+// Bundled at build time from strudel-samples.alternet.site (which lacks CORS headers).
+// Refresh by re-downloading to public/strudel_samples.json.
+const SAMPLE_INDEX_URL = "/strudel_samples.json";
 const SAMPLE_USAGE_HINT =
   'Load external packs with samples("github:user/repo") then use s("soundname"). ' +
   'Builtin sounds don\'t need loading — just use s("bd sd hh"). ' +
@@ -136,7 +137,7 @@ const SAMPLE_USAGE_HINT =
 
 interface SamplePack {
   name: string;
-  samples: string[];
+  samples?: string[];
   builtin?: boolean;
 }
 
@@ -162,13 +163,12 @@ async function sampleSearch(query: string): Promise<string> {
     }> = [];
     for (const pack of index) {
       const name = pack.name.toLowerCase();
-      const matchingSamples = pack.samples.filter((s) =>
-        s.toLowerCase().includes(q)
-      );
+      const samples = pack.samples ?? [];
+      const matchingSamples = samples.filter((s) => s.toLowerCase().includes(q));
       if (name.includes(q) || matchingSamples.length > 0) {
         const entry = {
           pack: pack.name,
-          sounds: name.includes(q) ? pack.samples : matchingSamples,
+          sounds: name.includes(q) ? samples : matchingSamples,
           builtin: !!pack.builtin,
           ...(pack.builtin ? {} : { load_with: `samples("github:${pack.name}")` }),
         };

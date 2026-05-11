@@ -189,12 +189,14 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
               toolName: block.name,
               content: block.name === "strudel_rewrite_code" ? "Rewriting code..."
                 : block.name === "strudel_edit_code" ? "Editing code..."
+                : block.name === "strudel_docs_search" ? `Searching docs: ${(toolInput.query as string) ?? ""}`
+                : block.name === "sample_search" ? `Searching samples: ${(toolInput.query as string) ?? ""}`
                 : block.name,
             },
           ]);
 
           // Execute tool
-          const resultStr = executeTool(
+          const resultStr = await executeTool(
             block.name,
             toolInput,
             editorRef.current!
@@ -207,7 +209,10 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
             if (last.role === "tool" && last.toolName === block.name) {
               updated[updated.length - 1] = {
                 ...last,
-                content: (block.name === "strudel_rewrite_code" || block.name === "strudel_edit_code") ? "Code updated" : resultStr,
+                content: (block.name === "strudel_rewrite_code" || block.name === "strudel_edit_code") ? "Code updated"
+                  : block.name === "strudel_docs_search" ? "Docs searched"
+                  : block.name === "sample_search" ? "Samples searched"
+                  : resultStr,
               };
             }
             return updated;

@@ -23,6 +23,21 @@ function summarizeSearchResult(resultStr: string): string {
   }
 }
 
+function summarizeToolResult(resultStr: string): string {
+  try {
+    const parsed = JSON.parse(resultStr);
+    if (parsed.ok === false) return `failed: ${parsed.error ?? "unknown error"}`;
+    if (parsed.ok === true) return "ok";
+    if (Array.isArray(parsed.results)) {
+      const n = parsed.results.length;
+      return n === 0 ? "no matches" : `${n} result${n === 1 ? "" : "s"}`;
+    }
+    return "done";
+  } catch {
+    return "done";
+  }
+}
+
 export function ChatPanel({ editorRef }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -170,6 +185,7 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
       for (const block of result.content) {
         if (block.type === "server_tool_use" && block.name === "web_search") {
           const query = (block.input as { query?: string }).query ?? "";
+          console.log(`[tool] web_search(${JSON.stringify({ query })})`);
           setMessages((prev) => [
             ...prev,
             {
@@ -191,6 +207,9 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
 
         for (const block of toolUseBlocks) {
           const toolInput = block.input as Record<string, unknown>;
+          const inputStr = JSON.stringify(toolInput);
+          const truncated = inputStr.length > 120 ? inputStr.slice(0, 120) + "..." : inputStr;
+          console.log(`[tool] ${block.name}(${truncated})`);
 
           // Display tool call in chat
           setMessages((prev) => [
@@ -212,6 +231,7 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
             toolInput,
             editorRef.current!
           );
+          console.log(`[tool] ${block.name} → ${summarizeToolResult(resultStr)}`);
 
           // Update tool message with result
           setMessages((prev) => {
@@ -255,7 +275,7 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
     return (
       <button
         onClick={() => setVisible(true)}
-        className="absolute top-[calc(1rem-16px)] right-[calc(1rem-5px)] w-14 h-14 z-20 rounded-full bg-transparent border-0 p-0 cursor-pointer flex items-center justify-center transition-[transform,opacity] duration-300 hover:scale-110"
+        className="absolute top-[calc(1rem-16px)] right-[calc(1rem-5px)] w-14 h-14 z-20 rounded-full bg-transparent border-0 p-0 cursor-pointer flex items-center justify-center transition-[transform,opacity] duration-300 hover:scale-110 animate-panel-in"
       >
         <img src="/hans_logo.svg" alt="Chat" className="w-full h-full object-contain" />
       </button>
@@ -265,7 +285,7 @@ export function ChatPanel({ editorRef }: ChatPanelProps) {
   const sharedBtn = "bg-transparent border-0 cursor-pointer transition-colors duration-300";
 
   return (
-    <div className="absolute top-4 right-4 bottom-4 w-[360px] z-20 flex flex-col bg-[var(--surface)] border border-[var(--surface-border)] rounded-[var(--radius)] shadow-[var(--shadow)]">
+    <div className="absolute top-4 right-4 bottom-4 w-[360px] z-20 flex flex-col bg-[var(--surface)] border border-[var(--surface-border)] rounded-[var(--radius)] shadow-[var(--shadow)] animate-panel-in">
       {/* Header */}
       <div className="flex justify-between items-center pt-1 pr-1 pb-0 pl-2">
         <button

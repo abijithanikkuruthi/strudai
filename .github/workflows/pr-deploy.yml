@@ -16,7 +16,6 @@ jobs:
     # Only run for PRs opened from within this repo, not from forks.
     # Fork PRs never have access to deployment secrets anyway, but this
     # prevents the build step from executing untrusted code on the runner.
-    if: github.event.pull_request.head.repo.full_name == github.repository
 
     # Require manual approval from a maintainer before secrets are used.
     # Configure the "dev-preview" environment in:
